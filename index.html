@@ -1427,6 +1427,19 @@
           </div>
         </div>
 
+        <!-- PCD — Pessoa com Deficiência -->
+        <div class="check-wrap" id="wrap-pcd">
+          <input type="checkbox" id="pcd" onchange="togglePcd()">
+          <label for="pcd"><strong>Pessoa com Deficiência (PCD)</strong></label>
+        </div>
+        <div class="frow c1" id="field-cid" style="display:none;">
+          <div class="field">
+            <label for="cid">CID — Classificação Internacional de Doenças <span class="r">*</span></label>
+            <input type="text" id="cid" placeholder="" maxlength="20">
+            <span class="em" id="err-cid">Informe o CID.</span>
+          </div>
+        </div>
+
         <div class="sdiv"><span>Endereço</span></div>
 
         <div class="frow">
@@ -1862,11 +1875,12 @@ function hf(key, inp) {
 }
 function fmtb(b){ return b<1048576?(b/1024).toFixed(0)+'KB':(b/1048576).toFixed(1)+'MB'; }
 
-// ─── CID ─────────────────────────────────────────────────
-function toggleCid(val) {
+// ─── PCD / CID ───────────────────────────────────────────
+function togglePcd() {
+  const on = document.getElementById('pcd').checked;
   const field = document.getElementById('field-cid');
-  field.style.display = val === 'Sim' ? 'block' : 'none';
-  if (val !== 'Sim') {
+  field.style.display = on ? 'block' : 'none';
+  if (!on) {
     document.getElementById('cid').value = '';
     document.getElementById('cid').classList.remove('err');
     se('err-cid', false);
@@ -1884,6 +1898,12 @@ async function val2() {
   });
   if (document.getElementById('cpf').value.replace(/\D/g,'').length!==11) {
     document.getElementById('cpf').classList.add('err'); se('err-cpf',true); ok=false;
+  }
+  // PCD → CID obrigatório
+  if (document.getElementById('pcd').checked) {
+    const cid = document.getElementById('cid');
+    if (!cid.value.trim()) { cid.classList.add('err'); se('err-cid',true); ok=false; }
+    else { cid.classList.remove('err'); se('err-cid',false); }
   }
   // Documento com foto
   if (tipoDocId === 'cnh') {
@@ -2223,6 +2243,8 @@ function buildResumo() {
       ${rv('Nome Completo', gv('nome'),true)}
       ${rv('CPF', gv('cpf'))} ${rv('Data Nasc.', gv('nasc').split('-').reverse().join('/'))}
       ${rv('Idade', gv('idade'))} ${rv('Sexo', gv('sexo'))}
+      ${rv('PCD', document.getElementById('pcd').checked ? 'Sim' : 'Não')}
+      ${document.getElementById('pcd').checked ? rv('CID', gv('cid')) : ''}
       ${rv('Doc. Identificação', tipoDocId === 'cnh' ? 'CNH' : 'RG')}
       ${!menor?rv('Telefone / WhatsApp', gv('tel1')):''}
       ${rv('E-mail', gv('ee'), true)}
@@ -2381,6 +2403,8 @@ async function enviar() {
         dadosPessoais:{
           nomeCompleto:gv('nome'), cpf:gv('cpf'), dataNascimento:gv('nasc'),
           sexo:gv('sexo'),
+          pcd: document.getElementById('pcd').checked,
+          cid: document.getElementById('pcd').checked ? gv('cid') : '',
           telefone1: menor ? gv('resp_tel') : gv('tel1'),
           endereco:gv('end'), numero:gv('num'), bairro:gv('bairro'), cidade:gv('cidade'),
         },
@@ -3061,6 +3085,8 @@ async function abrirDocs(ins) {
       ${_infoItem('CPF', dp.cpf)}
       ${_infoItem('Data de Nascimento', dataNasc)}
       ${_infoItem('Sexo', dp.sexo)}
+      ${_infoItem('PCD', dp.pcd ? 'Sim' : 'Não')}
+      ${dp.pcd ? _infoItem('CID', dp.cid) : ''}
       ${_infoItem('Telefone / WhatsApp', dp.telefone1)}
       ${_infoItem('E-mail', ins.email, true)}
       ${_infoItem('Endereço', (dp.endereco||'') + ', ' + (dp.numero||'') + ' — ' + (dp.bairro||'') + ' / ' + (dp.cidade||''), true)}
@@ -3246,7 +3272,7 @@ function exportarCSV() {
   linhas.push([`"Processo Seletivo — Trilha de Informática · Gerado em: ${new Date().toLocaleString('pt-BR')}"`]);
   linhas.push(['']);
 
-  const cab = ['Nº','Nome Completo','CPF','Data Nasc.','Idade','Sexo','Telefone/WhatsApp','E-mail','Endereço','Menor','Nome Responsável','CPF Responsável','Tel. Responsável','Data Inscrição'];
+  const cab = ['Nº','Nome Completo','CPF','Data Nasc.','Idade','Sexo','PCD','CID','Telefone/WhatsApp','E-mail','Endereço','Menor','Nome Responsável','CPF Responsável','Tel. Responsável','Data Inscrição'];
   linhas.push(cab.map(c => `"${c}"`));
 
   ordenados.forEach((ins, idx) => {
@@ -3259,6 +3285,8 @@ function exportarCSV() {
       dp.dataNascimento ? dp.dataNascimento.split('-').reverse().join('/') : '',
       idade(dp.dataNascimento),
       dp.sexo || '',
+      dp.pcd ? 'Sim' : 'Não',
+      dp.pcd ? (dp.cid || '') : '',
       dp.telefone1 || '',
       ins.email || '',
       (dp.endereco||'') + ', ' + (dp.numero||'') + ' - ' + (dp.bairro||'') + ' / ' + (dp.cidade||''),
